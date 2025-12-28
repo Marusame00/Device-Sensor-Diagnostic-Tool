@@ -67,4 +67,4 @@ All in a mobile-friendly, single-page UI that you can hit from any phone, tablet
 Once you enable GitHub Pages, your URL will look like:
 
 ```text
-https://yourusername.github.io/Device-Sensor-Diagnostic-Tool/
+https://marusame00.github.io/Device-Sensor-Diagnostic-Tool/
