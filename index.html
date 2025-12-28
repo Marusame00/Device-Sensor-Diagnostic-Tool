@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sensor & API Diagnostic Tool</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
+      color: #fff;
+      padding: 16px;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 8px;
+      font-size: 24px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    .subtitle {
+      text-align: center;
+      font-size: 13px;
+      opacity: 0.85;
+      margin-bottom: 20px;
+    }
+    .test-card {
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+      border: 1px solid rgba(255,255,255,0.18);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .test-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .test-name {
+      font-weight: 600;
+      font-size: 15px;
+    }
+    .status-badge {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .status-ok {
+      background: #10b981;
+      color: #fff;
+    }
+    .status-error {
+      background: #ef4444;
+      color: #fff;
+    }
+    .status-warn {
+      background: #f59e0b;
+      color: #000;
+    }
+    .status-testing {
+      background: #6366f1;
+      color: #fff;
+    }
+    .test-details {
+      font-size: 13px;
+      line-height: 1.5;
+      opacity: 0.9;
+      margin-top: 6px;
+      font-family: 'Courier New', monospace;
+    }
+    .test-details div {
+      margin: 2px 0;
+    }
+    .error-code {
+      color: #fca5a5;
+      font-weight: 600;
+    }
+    .live-value {
+      color: #86efac;
+      font-weight: 600;
+    }
+    .btn-container {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.1s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    button:active {
+      transform: scale(0.97);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #fff;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+    .summary {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 16px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .summary-title {
+      font-size: 13px;
+      opacity: 0.8;
+      margin-bottom: 6px;
+    }
+    .summary-stats {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 10px;
+    }
+    .stat {
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .stat-label {
+      font-size: 11px;
+      opacity: 0.7;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .overlay.hidden { display: none; }
+    .overlay-card {
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      padding: 24px;
+      border-radius: 16px;
+      max-width: 90%;
+      text-align: center;
+      border: 2px solid rgba(255,255,255,0.3);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .overlay-title {
+      font-size: 20px;
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+    .overlay-text {
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 18px;
+      opacity: 0.9;
+    }
+    .overlay-btn {
+      background: #10b981;
+      color: #fff;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay" id="startOverlay">
+    <div class="overlay-card">
+      <div class="overlay-title">🔬 Sensor Diagnostic Tool</div>
+      <p class="overlay-text">
+        This tool will test your device's sensors, APIs, and browser capabilities.<br><br>
+        Some tests (like motion sensors) require user interaction to start.
+      </p>
+      <button class="overlay-btn" id="startBtn">Run Diagnostics</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>🔬 Device Diagnostic Tool</h1>
+    <p class="subtitle">Testing sensors, APIs, and browser capabilities</p>
+
+    <div class="summary">
+      <div class="summary-title">Test Results Summary</div>
+      <div class="summary-stats">
+        <div class="stat">
+          <div class="stat-value" id="passCount">0</div>
+          <div class="stat-label">✓ Pass</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="warnCount">0</div>
+          <div class="stat-label">⚠ Warn</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="failCount">0</div>
+          <div class="stat-label">✗ Fail</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-container">
+      <button class="btn-primary" id="rerunBtn">🔄 Re-run Tests</button>
+      <button class="btn-secondary" id="copyBtn">📋 Copy Report</button>
+    </div>
+
+    <div id="testResults"></div>
+  </div>
+
+  <script>
+    const tests = [];
+    let passCount = 0, warnCount = 0, failCount = 0;
+
+    function updateSummary() {
+      document.getElementById('passCount').textContent = passCount;
+      document.getElementById('warnCount').textContent = warnCount;
+      document.getElementById('failCount').textContent = failCount;
+    }
+
+    function addTest(name, status, details, errorCode = null) {
+      tests.push({ name, status, details, errorCode });
+
+      if (status === 'ok') passCount++;
+      else if (status === 'warn') warnCount++;
+      else if (status === 'error') failCount++;
+
+      updateSummary();
+      renderTests();
+    }
+
+    function renderTests() {
+      const container = document.getElementById('testResults');
+      container.innerHTML = tests.map(test => {
+        let badgeClass = 'status-testing';
+        let badgeText = 'Testing';
+
+        if (test.status === 'ok') {
+          badgeClass = 'status-ok';
+          badgeText = '✓ OK';
+        } else if (test.status === 'error') {
+          badgeClass = 'status-error';
+          badgeText = '✗ Error';
+        } else if (test.status === 'warn') {
+          badgeClass = 'status-warn';
+          badgeText = '⚠ Warn';
+        }
+
+        let detailsHtml = '';
+        if (Array.isArray(test.details)) {
+          detailsHtml = test.details.map(d => `<div>${d}</div>`).join('');
+        } else {
+          detailsHtml = `<div>${test.details}</div>`;
+        }
+
+        if (test.errorCode) {
+          detailsHtml += `<div class="error-code">Error: ${test.errorCode}</div>`;
+        }
+
+        return `
+          <div class="test-card">
+            <div class="test-header">
+              <div class="test-name">${test.name}</div>
+              <div class="status-badge ${badgeClass}">${badgeText}</div>
+            </div>
+            <div class="test-details">${detailsHtml}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function resetTests() {
+      tests.length = 0;
+      passCount = 0;
+      warnCount = 0;
+      failCount = 0;
+      updateSummary();
+      renderTests();
+    }
+
+    async function runDiagnostics() {
+      resetTests();
+
+      // 1. Context Security
+      const protocol = window.location.protocol;
+      const isSecure = protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      addTest(
+        '🔒 Secure Context',
+        isSecure ? 'ok' : 'warn',
+        [
+          `Protocol: ${protocol}`,
+          `Hostname: ${window.location.hostname}`,
+          isSecure ? 'Secure context ✓' : 'Non-secure (some APIs may be blocked)'
+        ]
+      );
+
+      // 2. User Agent
+      const ua = navigator.userAgent;
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
+      addTest(
+        '📱 Device Info',
+        'ok',
+        [
+          `Platform: ${navigator.platform}`,
+          `Mobile: ${isMobile ? 'Yes' : 'No'}`,
+          `UA: ${ua.substring(0, 60)}...`
+        ]
+      );
+
+      // 3. Screen Info
+      addTest(
+        '🖥️ Screen',
+        'ok',
+        [
+          `Size: ${screen.width}×${screen.height}`,
+          `Available: ${screen.availWidth}×${screen.availHeight}`,
+          `Pixel Ratio: ${window.devicePixelRatio}`,
+          `Orientation: ${screen.orientation?.type || 'unknown'}`
+        ]
+      );
+
+      // 4. Geolocation API
+      if ('geolocation' in navigator) {
+        addTest('📍 Geolocation API', 'ok', 'API available (permission not tested)');
+      } else {
+        addTest('📍 Geolocation API', 'error', 'Not supported', 'GEO_NOT_SUPPORTED');
+      }
+
+      // 5. DeviceOrientation API
+      if ('DeviceOrientationEvent' in window) {
+        const hasPermissionAPI = typeof DeviceOrientationEvent.requestPermission === 'function';
+        addTest(
+          '🧭 DeviceOrientation API',
+          'ok',
+          [
+            'API available',
+            `Permission API: ${hasPermissionAPI ? 'Yes (iOS)' : 'No (Android/Desktop)'}`,
+            'Listening for events...'
+          ]
+        );
+
+        // Try to listen for actual events
+        let orientationReceived = false;
+        const orientationHandler = (e) => {
+          if (!orientationReceived && (e.alpha !== null || e.beta !== null || e.gamma !== null)) {
+            orientationReceived = true;
+            const testIndex = tests.findIndex(t => t.name === '🧭 DeviceOrientation Events');
+            if (testIndex !== -1) {
+              tests[testIndex].status = 'ok';
+              tests[testIndex].details = [
+                `alpha: ${e.alpha?.toFixed(1) || 'null'}`,
+                `beta: ${e.beta?.toFixed(1) || 'null'}`,
+                `gamma: ${e.gamma?.toFixed(1) || 'null'}`,
+                `absolute: ${e.absolute}`
+              ];
+              renderTests();
+            }
+          }
+        };
+
+        window.addEventListener('deviceorientation', orientationHandler);
+
+        addTest('🧭 DeviceOrientation Events', 'warn', 'Waiting for data... (move device)', 'WAITING_FOR_DATA');
+
+        setTimeout(() => {
+          if (!orientationReceived) {
+            const testIndex = tests.findIndex(t => t.name === '🧭 DeviceOrientation Events');
+            if (testIndex !== -1 && tests[testIndex].status === 'warn') {
+              tests[testIndex].status = 'error';
+              tests[testIndex].details = 'No events received after 5s';
+              tests[testIndex].errorCode = 'NO_ORIENTATION_DATA';
+              failCount++;
+              warnCount--;
+              updateSummary();
+              renderTests();
+            }
+          }
+          window.removeEventListener('deviceorientation', orientationHandler);
+        }, 5000);
+      } else {
+        addTest('🧭 DeviceOrientation API', 'error', 'Not supported', 'ORIENTATION_NOT_SUPPORTED');
+      }
+
+      // 6. DeviceMotion API
+      if ('DeviceMotionEvent' in window) {
+        addTest('📳 DeviceMotion API', 'ok', 'API available');
+
+        let motionReceived = false;
+        const motionHandler = (e) => {
+          if (!motionReceived && e.acceleration) {
+            motionReceived = true;
+            const testIndex = tests.findIndex(t => t.name === '📳 DeviceMotion Events');
+            if (testIndex !== -1) {
+              tests[testIndex].status = 'ok';
+              tests[testIndex].details = [
+                `x: ${e.acceleration.x?.toFixed(2)}`,
+                `y: ${e.acceleration.y?.toFixed(2)}`,
+                `z: ${e.acceleration.z?.toFixed(2)}`
+              ];
+              renderTests();
+            }
+          }
+        };
+
+        window.addEventListener('devicemotion', motionHandler);
+        addTest('📳 DeviceMotion Events', 'warn', 'Waiting for data...', 'WAITING_FOR_DATA');
+
+        setTimeout(() => {
+          if (!motionReceived) {
+            const testIndex = tests.findIndex(t => t.name === '📳 DeviceMotion Events');
+            if (testIndex !== -1 && tests[testIndex].status === 'warn') {
+              tests[testIndex].status = 'error';
+              tests[testIndex].details = 'No events received';
+              tests[testIndex].errorCode = 'NO_MOTION_DATA';
+              failCount++;
+              warnCount--;
+              updateSummary();
+              renderTests();
+            }
+          }
+          window.removeEventListener('devicemotion', motionHandler);
+        }, 5000);
+      } else {
+        addTest('📳 DeviceMotion API', 'error', 'Not supported', 'MOTION_NOT_SUPPORTED');
+      }
+
+      // 7. Touch Support
+      const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      addTest(
+        '👆 Touch Support',
+        hasTouch ? 'ok' : 'warn',
+        [
+          `Touch events: ${('ontouchstart' in window) ? 'Yes' : 'No'}`,
+          `Max touch points: ${navigator.maxTouchPoints || 0}`
+        ]
+      );
+
+      // 8. Vibration API
+      if ('vibrate' in navigator) {
+        addTest('📳 Vibration API', 'ok', 'Supported');
+      } else {
+        addTest('📳 Vibration API', 'warn', 'Not supported');
+      }
+
+      // 9. Battery API
+      if ('getBattery' in navigator) {
+        try {
+          const battery = await navigator.getBattery();
+          addTest(
+            '🔋 Battery API',
+            'ok',
+            [
+              `Level: ${(battery.level * 100).toFixed(0)}%`,
+              `Charging: ${battery.charging ? 'Yes' : 'No'}`,
+              `Time to full: ${battery.chargingTime === Infinity ? 'N/A' : battery.chargingTime + 's'}`
+            ]
+          );
+        } catch (err) {
+          addTest('🔋 Battery API', 'error', 'Error accessing battery', err.message);
+        }
+      } else {
+        addTest('🔋 Battery API', 'warn', 'Not supported');
+      }
+
+      // 10. Network Info
+      if ('connection' in navigator || 'mozConnection' in navigator || 'webkitConnection' in navigator) {
+        const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        addTest(
+          '📶 Network Info',
+          'ok',
+          [
+            `Type: ${conn.effectiveType || conn.type || 'unknown'}`,
+            `Downlink: ${conn.downlink ? conn.downlink + ' Mbps' : 'unknown'}`,
+            `RTT: ${conn.rtt ? conn.rtt + ' ms' : 'unknown'}`
+          ]
+        );
+      } else {
+        addTest('📶 Network Info', 'warn', 'Not supported');
+      }
+
+      // 11. Local Storage
+      try {
+        localStorage.setItem('test', 'test');
+        localStorage.removeItem('test');
+        addTest('💾 LocalStorage', 'ok', 'Read/Write OK');
+      } catch (err) {
+        addTest('💾 LocalStorage', 'error', 'Access denied', err.message);
+      }
+
+      // 12. IndexedDB
+      if ('indexedDB' in window) {
+        addTest('🗄️ IndexedDB', 'ok', 'Supported');
+      } else {
+        addTest('🗄️ IndexedDB', 'error', 'Not supported', 'IDB_NOT_SUPPORTED');
+      }
+
+      // 13. Service Worker
+      if ('serviceWorker' in navigator) {
+        addTest('⚙️ Service Worker', 'ok', 'Supported');
+      } else {
+        addTest('⚙️ Service Worker', 'warn', 'Not supported');
+      }
+
+      // 14. Web Audio
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (AudioContext) {
+        addTest('🔊 Web Audio API', 'ok', 'Supported');
+      } else {
+        addTest('🔊 Web Audio API', 'error', 'Not supported', 'AUDIO_NOT_SUPPORTED');
+      }
+
+      // 15. WebGL
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (gl) {
+        const renderer = gl.getParameter(gl.RENDERER);
+        addTest('🎮 WebGL', 'ok', `Renderer: ${renderer}`);
+      } else {
+        addTest('🎮 WebGL', 'error', 'Not supported', 'WEBGL_NOT_SUPPORTED');
+      }
+
+      // 16. Clipboard API
+      if (navigator.clipboard) {
+        addTest('📋 Clipboard API', 'ok', 'Supported');
+      } else {
+        addTest('📋 Clipboard API', 'warn', 'Not supported');
+      }
+
+      // 17. Notifications
+      if ('Notification' in window) {
+        addTest(
+          '🔔 Notifications API',
+          'ok',
+          [
+            'API available',
+            `Permission: ${Notification.permission}`
+          ]
+        );
+      } else {
+        addTest('🔔 Notifications API', 'warn', 'Not supported');
+      }
+
+      // 18. Camera/Media Devices
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoInputs = devices.filter(d => d.kind === 'videoinput');
+          const audioInputs = devices.filter(d => d.kind === 'audioinput');
+          addTest(
+            '📷 Media Devices',
+            'ok',
+            [
+              `Video inputs: ${videoInputs.length}`,
+              `Audio inputs: ${audioInputs.length}`
+            ]
+          );
+        } catch (err) {
+          addTest('📷 Media Devices', 'warn', 'Enumeration failed', err.message);
+        }
+      } else {
+        addTest('📷 Media Devices', 'error', 'Not supported', 'MEDIA_NOT_SUPPORTED');
+      }
+
+      // 19. Pointer Events
+      if ('PointerEvent' in window) {
+        addTest('🖱️ Pointer Events', 'ok', 'Supported');
+      } else {
+        addTest('🖱️ Pointer Events', 'warn', 'Not supported (fallback to mouse/touch)');
+      }
+
+      // 20. Fullscreen API
+      const elem = document.documentElement;
+      if (elem.requestFullscreen || elem.webkitRequestFullscreen || elem.mozRequestFullScreen || elem.msRequestFullscreen) {
+        addTest('⛶ Fullscreen API', 'ok', 'Supported');
+      } else {
+        addTest('⛶ Fullscreen API', 'warn', 'Not supported');
+      }
+    }
+
+    function generateReport() {
+      let report = '=== DEVICE DIAGNOSTIC REPORT ===\n\n';
+      report += `Date: ${new Date().toLocaleString()}\n`;
+      report += `URL: ${window.location.href}\n`;
+      report += `User Agent: ${navigator.userAgent}\n\n`;
+      report += `Summary: ${passCount} pass, ${warnCount} warn, ${failCount} fail\n\n`;
+
+      tests.forEach(test => {
+        report += `[${test.status.toUpperCase()}] ${test.name}\n`;
+        if (Array.isArray(test.details)) {
+          test.details.forEach(d => report += `  ${d}\n`);
+        } else {
+          report += `  ${test.details}\n`;
+        }
+        if (test.errorCode) {
+          report += `  Error Code: ${test.errorCode}\n`;
+        }
+        report += '\n';
+      });
+
+      return report;
+    }
+
+    document.getElementById('startBtn').addEventListener('click', () => {
+      document.getElementById('startOverlay').classList.add('hidden');
+      runDiagnostics();
+    });
+
+    document.getElementById('rerunBtn').addEventListener('click', () => {
+      runDiagnostics();
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+      const report = generateReport();
+      try {
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(report);
+          alert('Report copied to clipboard!');
+        } else {
+          // Fallback
+          const textarea = document.createElement('textarea');
+          textarea.value = report;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+          alert('Report copied to clipboard!');
+        }
+      } catch (err) {
+        alert('Could not copy: ' + err.message);
+      }
+    });
+  </script>
+</body>
+</html>
